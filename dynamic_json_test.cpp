@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
   std::string schemaString = buildCapnpSchema(&columns, structName, &err);
 
 
-  std::cout << schemaString << std::endl;
+//  std::cout << schemaString << std::endl;
 
   char* filePath = std::tmpnam(NULL);
   std::FILE* tmpf = fopen(filePath, "w");
@@ -202,11 +202,11 @@ int main(int argc, char* argv[]) {
   fclose(tmpf);
 
 
-  std::cout << filePath << std::endl;
+  //std::cout << filePath << std::endl;
 
   capnp::ParsedSchema parsedSchema = parser.parseDiskFile(structName, filePath, {"/usr/include"});
   StructSchema schema = parsedSchema.getNested(structName).asStruct();
-  remove(filePath);
+  //remove(filePath);
 
   if (argc != 2) {
     std::cerr << "Missing arg." << std::endl;
