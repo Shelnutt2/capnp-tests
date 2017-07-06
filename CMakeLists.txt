@@ -23,3 +23,8 @@ set(SOURCE_FILES dynamic_json_test.cpp)
 add_executable(dynamic_json_test ${SOURCE_FILES})
 target_link_libraries(dynamic_json_test ${CAPNP_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+set(SOURCE_FILES dynamic_write_test.cpp)
+add_executable(dynamic_write_test ${SOURCE_FILES})
+target_link_libraries(dynamic_write_test ${CAPNP_LIBRARIES})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
