@@ -4,6 +4,7 @@
 #include <capnp/schema.h>
 #include <capnp/dynamic.h>
 #include <capnp/schema-parser.h>
+#include <kj/io.h>
 
 #include <json-to-capnp.hpp>
 #include <limits.h>
@@ -12,6 +13,8 @@
 
 #include <map>
 #include <unordered_map>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 
 using ::capnp::DynamicValue;
@@ -33,27 +36,37 @@ void dynamicWriteAddressBook(int fd, StructSchema schema) {
   // normally want to do; it's just for illustration.
 
   MallocMessageBuilder message;
+  MallocMessageBuilder message2;
 
   // Types shown for explanation purposes; normally you'd
   // use auto.
-  auto calender = message.initRoot<DynamicStruct>(schema);
+  DynamicStruct::Builder date1 = message.initRoot<DynamicStruct>(schema);
 
-  DynamicList::Builder date =
-      calender.init("rows", 2).as<DynamicList>();
-
-  DynamicStruct::Builder date1 =
-      date[0].as<DynamicStruct>();
   date1.set("year", 2017);
   date1.set("month", 07);
   date1.set("day", 06);
 
-  auto date2 = date[1].as<DynamicStruct>();
+  DynamicStruct::Builder date2 = message2.initRoot<DynamicStruct>(schema);
   date2.set("year", 2017);
   date2.set("month", 07);
   date2.set("day", 07);
 
+  //capnp::writeMessageToFd(fd, message);
   capnp::writeMessageToFd(fd, message);
+  capnp::writeMessageToFd(fd, message2);
+
+  for (int i = 0; i < 2017; i++) {
+    MallocMessageBuilder message;
+    DynamicStruct::Builder datex = message.initRoot<DynamicStruct>(schema);
+    datex.set("year", i);
+    datex.set("month", 07);
+    datex.set("day", 07);
+    capnp::writeMessageToFd(fd, message);
+  }
+
 }
+
+
 
 void dynamicPrintValue(DynamicValue::Reader value) {
   // Print an arbitrary message via the dynamic API by
@@ -129,10 +142,51 @@ void dynamicPrintValue(DynamicValue::Reader value) {
   }
 }
 
-void dynamicPrintMessage(int fd, StructSchema schema) {
+void dynamicPrintMessage(std::FILE* file, StructSchema schema) {
+  int fd = fileno(file);
   capnp::StreamFdMessageReader message(fd);
   dynamicPrintValue(message.getRoot<DynamicStruct>(schema));
   std::cout << std::endl;
+
+  capnp::StreamFdMessageReader message2(fd);
+  dynamicPrintValue(message2.getRoot<DynamicStruct>(schema));
+  std::cout << std::endl;
+
+  int c;
+
+  fpos_t pos;
+  while(!feof(file)) {
+    fgetpos (file,&pos);
+    c = fgetc(file);
+    if(c == EOF)
+      break;
+    else
+      fsetpos (file,&pos);
+    capnp::StreamFdMessageReader message(fd);
+    dynamicPrintValue(message.getRoot<DynamicStruct>(schema));
+    std::cout << std::endl;
+  }
+
+}
+
+void dynamicPrintMMapMessage(capnp::word *data, size_t mv_size, StructSchema schema){
+  //kj::ArrayPtr<const word> arrayPtr;
+  capnp::FlatArrayMessageReader message(kj::ArrayPtr<const capnp::word>(data, mv_size / sizeof(capnp::word)));
+
+  dynamicPrintValue(message.getRoot<DynamicStruct>(schema));
+  std::cout << std::endl;
+
+  while(message.getEnd() != data+(mv_size / sizeof(capnp::word))) {
+    message = capnp::FlatArrayMessageReader(kj::ArrayPtr<const capnp::word>(message.getEnd(), data+(mv_size / sizeof(capnp::word))));
+    dynamicPrintValue(message.getRoot<DynamicStruct>(schema));
+    std::cout << std::endl;
+  }
+}
+
+size_t getFilesize(const char* filename) {
+  struct stat st;
+  stat(filename, &st);
+  return st.st_size;
 }
 
 int main(int argc, char* argv[]) {
@@ -152,7 +206,7 @@ int main(int argc, char* argv[]) {
 
   int err;
   std::string structName = "Date";
-  std::string schemaString = buildCapnpSchema(&columns, structName, &err);
+  std::string schemaString = buildCapnpLimitedSchema(&columns, structName, &err);
 
 
   char* filePath = std::tmpnam(NULL);
@@ -167,16 +221,35 @@ int main(int argc, char* argv[]) {
   StructSchema schema = parsedSchema.getNested(structName).asStruct();
 
   char* messageFilePath = std::tmpnam(NULL);
+
   std::FILE* messageFile = fopen(messageFilePath, "w+");
   int fd = fileno(messageFile);
   std::cout << messageFilePath << std::endl;
 
   dynamicWriteAddressBook(fd, schema);
   std::rewind(messageFile);
-  dynamicPrintMessage(fileno(messageFile), schema);
+  fclose(messageFile);
 
-  std::remove(filePath);
-  std::remove(messageFilePath);
+  fd = open(messageFilePath, O_RDONLY);
+  size_t size = getFilesize(messageFilePath);
+  void *mmappedData = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+
+  if(mmappedData == MAP_FAILED) {
+    close(fd);
+    std::cerr << "mmaped failed for " << messageFilePath << std::endl;
+    return -1;
+  }
+  //dynamicPrintMessage(messageFile, schema);
+
+  dynamicPrintMMapMessage((capnp::word*)mmappedData, size, schema);
+
+  if (munmap(mmappedData, size) == -1) {
+    perror("Error un-mmapping the file");
+  }
+  close(fd);
+
+  //std::remove(filePath);
+  //std::remove(messageFilePath);
   return 0;
 }
 

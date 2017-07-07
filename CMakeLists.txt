@@ -28,3 +28,8 @@ set(SOURCE_FILES dynamic_write_test.cpp)
 add_executable(dynamic_write_test ${SOURCE_FILES})
 target_link_libraries(dynamic_write_test ${CAPNP_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+set(SOURCE_FILES dynamic_mmap_test.cpp)
+add_executable(dynamic_mmap_test ${SOURCE_FILES})
+target_link_libraries(dynamic_mmap_test ${CAPNP_LIBRARIES})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})

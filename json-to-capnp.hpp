@@ -79,4 +79,37 @@ std::string buildCapnpSchema(std::map<u_int, std::unordered_map<std::string, std
   return output;
 };
 
+
+std::string buildCapnpLimitedSchema(std::map<u_int, std::unordered_map<std::string, std::string>> *columnMap,
+                             std::string structName, int *err, uint64_t id = 0) {
+
+  if(id == 0) {
+    id = generateRandomId();
+  }
+  std::string output = kj::str("@0x", kj::hex(id), ";\n").cStr();
+  output += "struct " + structName + " {\n";
+
+  for(auto const &column : *columnMap) {
+    u_int columnOrder = column.first;
+    std::unordered_map<std::string, std::string> columnDetails = column.second;
+
+    if(columnDetails.find("column_name") == columnDetails.end()) {
+      *err = -1;
+      return "";
+    }
+
+    if(columnDetails.find("column_type") == columnDetails.end()) {
+      *err = -1;
+      return "";
+    }
+
+    output += "  " + columnDetails.find("column_name")->second + " @" + std::to_string(columnOrder) + " :" + columnDetails.find("column_type")->second + ";\n";
+
+  }
+
+  output += "}";
+
+  return output;
+};
+
 #endif //ADDRESSBOOK_JSON_TO_CAPNP_HPP_HPP
