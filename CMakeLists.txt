@@ -19,6 +19,10 @@ add_executable(dynamic_test ${SOURCE_FILES})
 
 target_link_libraries(dynamic_test ${CAPNP_LIBRARIES})
 
+set(SOURCE_FILES dynamic_test_stdout.cpp)
+add_executable(dynamic_test_stdout ${SOURCE_FILES})
+target_link_libraries(dynamic_test_stdout ${CAPNP_LIBRARIES})
+
 set(SOURCE_FILES dynamic_json_test.cpp)
 add_executable(dynamic_json_test ${SOURCE_FILES})
 target_link_libraries(dynamic_json_test ${CAPNP_LIBRARIES})
@@ -38,6 +42,7 @@ set(SOURCE_FILES dynamic_mmap_in_out_test.cpp)
 add_executable(dynamic_mmap_in_out_test ${SOURCE_FILES})
 target_link_libraries(dynamic_mmap_in_out_test ${CAPNP_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 set(SOURCE_FILES dynamic_mmap_index_test.cpp)
 add_executable(dynamic_mmap_index_test ${SOURCE_FILES})
 target_link_libraries(dynamic_mmap_index_test ${CAPNP_LIBRARIES})
